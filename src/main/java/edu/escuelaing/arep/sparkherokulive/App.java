@@ -1,8 +1,13 @@
 package edu.escuelaing.arep.sparkherokulive;
 
-import static spark.Spark.*;
 import spark.Request;
 import spark.Response;
+
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static spark.Spark.*;
 
 public class App {
 
@@ -17,6 +22,65 @@ public class App {
         port(getPort());
         get("/inputdata", (req, res) -> inputDataPage(req, res));
         get("/results", (req, res) -> resultsPage(req, res));
+        get("/facadealpha","application/json", (req, res) -> facadeAlpha(req, res));
+        get("/stockservice","application/json", (req, res) -> stockservice(req, res));
+        get("/JSClient", (req, res) -> facadeJSClient(req,res));
+
+    }
+
+    private static String  facadeJSClient(Request req, Response res){
+        String api = req.queryParams("api");
+        String stock = req.queryParams("st");
+        String pageContent="";
+        if(api==null){
+            api="";
+        }
+        if(stock==null || stock==""){
+            pageContent=JSClient.Principal();
+        }
+        try{
+            if(api.equalsIgnoreCase("stockservice")){
+                pageContent=stockservice(req,res);
+            }
+            else if(api.equalsIgnoreCase("facadealpha")){
+                pageContent=facadeAlpha(req,res);
+            }
+        }catch (NullPointerException ex){
+            Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return pageContent;
+    }
+
+
+    private static String facadeAlpha(Request req, Response res) {
+        String stock = req.queryParams("st");
+        String response = "None";
+        HttpStockService stockService = Cache.getInstance().getServiceAlpha();
+        if(stock!=null && stock!=""){
+            stockService.setStock(stock);
+        }
+        try {
+            response= stockService.TimeSeriesDaily();
+        }catch (IOException ex){
+            Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return response;
+    }
+
+
+    private static String stockservice(Request req, Response res) {
+        String stock = req.queryParams("st");
+        String response = "None";
+        HttpStockService stockService = Cache.getInstance().getServiceIEX();
+        if(stock!=null && stock!=""){
+            stockService.setStock(stock);
+        }
+        try {
+            response= stockService.TimeSeriesDaily();
+        }catch (IOException ex){
+            Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return response;
     }
 
     private static String inputDataPage(Request req, Response res) {
@@ -58,4 +122,17 @@ public class App {
         }
         return 4567; //returns default port if heroku-port isn't set (i.e. on localhost)
     }
+
+    /*private static String getStockInfo(Request req,Response res){
+        res.type("application/json");
+        String responseStr = "none";
+        try{
+            HttpStockService stockService = HttpStockService.createService();
+            responseStr = stockService.getStock(req);
+        }
+        catch (IOException ex){
+            Logger.getLogger(App.class.getName()).log(Level.SEVERE,null,ex);
+        }
+        return responseStr;
+    }*/
 }
